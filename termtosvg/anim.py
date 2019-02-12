@@ -6,6 +6,12 @@ from collections import namedtuple
 from itertools import groupby
 from typing import Iterator
 
+import v4l2
+from v4l2wrapper import create_device_wrapper
+import cv2
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF, renderPM
+
 import pyte.graphics
 import pyte.screens
 from lxml import etree

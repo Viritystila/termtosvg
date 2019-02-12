@@ -37,6 +37,8 @@ setup(
     install_requires=[
         'lxml',
         'pyte',
+        'opencv-python',
+        'svglib',
     ],
     extras_require={
         'dev': [
