@@ -33,7 +33,7 @@ def integral_duration(duration):
 
 
 def parse(args, templates, default_template, default_geometry, default_min_dur, default_max_dur,
-          default_cmd):
+          default_cmd, default_dev):
     """Parse command line arguments
 
     :param args: Arguments to parse
@@ -44,6 +44,7 @@ def parse(args, templates, default_template, default_geometry, default_min_dur, 
     :param default_max_dur: Default maximal duration between frames in milliseconds
     :param default_max_dur: Default maximal duration between frames in milliseconds
     :param default_cmd: Default program (with argument list) recorded
+    :param default_dev; Default V4L2 device to write
     :return: Tuple made of the subcommand called (None, 'render' or 'record') and all parsed
     arguments
     """
@@ -62,6 +63,15 @@ def parse(args, templates, default_template, default_geometry, default_min_dur, 
         help='output still frames instead of an animation. ',
         action='store_true'
     )
+
+    v4l2_frames_parser = argparse.ArgumentParser(add_help=False)
+    v4l2_frames_parser.add_argument(
+        '-v4l2', '--v4l2-output',
+        help='Output still frames to v4l2.',
+        default=default_dev,
+        metavar='DEVICE',
+    )
+
 
     template_parser = argparse.ArgumentParser(add_help=False)
     template_parser.add_argument(
@@ -111,7 +121,7 @@ def parse(args, templates, default_template, default_geometry, default_min_dur, 
     parser = argparse.ArgumentParser(
         prog='termtosvg',
         parents=[command_parser, geometry_parser, min_duration_parser,
-                 max_duration_parser, still_frames_parser, template_parser],
+                 max_duration_parser, still_frames_parser, template_parser,v4l2_frames_parser],
         usage=USAGE,
         epilog=EPILOG
     )
@@ -144,7 +154,7 @@ def parse(args, templates, default_template, default_geometry, default_min_dur, 
             parser = argparse.ArgumentParser(
                 description='render an asciicast recording as an SVG animation',
                 parents=[template_parser, min_duration_parser, max_duration_parser,
-                         still_frames_parser],
+                         still_frames_parser, v4l2_frames_parser],
                 usage=RENDER_USAGE
             )
             parser.add_argument(
@@ -251,11 +261,13 @@ def main(args=None, input_fileno=None, output_fileno=None):
     console_handler.setFormatter(console_formatter)
     logger.handlers = [console_handler]
     logger.setLevel(logging.INFO)
+    
+    default_dev="/dev/video0"
 
     templates = termtosvg.config.default_templates()
     default_template = 'gjm8' if 'gjm8' in templates else sorted(templates)[0]
     default_cmd = os.environ.get('SHELL', 'sh')
-    command, args = parse(args[1:], templates, default_template, None, 1, None, default_cmd)
+    command, args = parse(args[1:], templates, default_template, None, 1, None, default_cmd, default_dev)
 
     if command == 'record':
         if args.output_path is None:
