@@ -170,14 +170,14 @@ def render_to_v4l2(records, directory, template, v4l2_device, cell_width=CELL_WI
 
     frame_generator = _render_still_frames(event_records, root, cell_width, cell_height)
     for frame_count, frame_root in enumerate(frame_generator):
-        print(etree.tostring(frame_root))
+        #print(etree.tostring(frame_root))
         path=etree.tostring(frame_root)
         #parser = etree.XMLParser(remove_comments=True, recover=True)
         #doc = etree.parse(path, parser=parser)
         svg = frame_root
-        svgRenderer = SvgRenderer("")#,**kwargs)
+        svgRenderer = SvgRenderer()#,**kwargs)
         drawing = svgRenderer.render(svg)
-        renderPDF.drawToFile(drawing, "file.pdf")
+        #renderPM.drawToFile(drawing, "file.png")
         
         #filename = os.path.join(directory, 'termtosvg_{:05}.png'.format(frame_count))
         #renderPM.drawToFile(drawing, 'termtosvg_{:05}.png'.format(frame_count), fmt="PNG")
@@ -193,14 +193,16 @@ def _render_preparation(records, template, cell_width, cell_height):
 
     root = resize_template(template, header.width, header.height, cell_width, cell_height)
 
-    svg_screen_tag = root.find('.//{{{namespace}}}svg[@id="screen"]'
-                               .format(namespace=SVG_NS))
+    svg_screen_tag = root.find('.//{{{namespace}}}svg[@id="screen"]'.format(namespace=SVG_NS))
+    
     if svg_screen_tag is None:
         raise ValueError('Missing tag: <svg id="screen" ...>...</svg>')
 
     for child in svg_screen_tag.getchildren():
         svg_screen_tag.remove(child)
+
     svg_screen_tag.append(BG_RECT_TAG)
+    root.append(BG_RECT_TAG)
 
     return records, root
 
@@ -223,15 +225,15 @@ def _render_still_frames(grouped_records, root, cell_width, cell_height):
                                                            cell_width=cell_width,
                                                            definitions={})
         frame_root = copy.deepcopy(root)
-        svg_screen_tag = frame_root.find('.//{{{namespace}}}svg[@id="screen"]'
+        svg_screen_tag = frame_root.find('.//{{{namespace}}}svg[@id="screen"]'   #"screen"
                                          .format(namespace=SVG_NS))
         if svg_screen_tag is None:
             raise ValueError('Missing tag: <svg id="screen" ...>...</svg>')
         tree_defs = etree.SubElement(svg_screen_tag, 'defs')
         for definition in frame_definitions.values():
-            tree_defs.append(definition)
-        svg_screen_tag.append(frame_group)
-
+            frame_root.append(definition)
+        #svg_screen_tag.append(frame_group)
+        frame_root.append(frame_group)
         _embed_css(frame_root)
         yield frame_root
 
@@ -468,6 +470,8 @@ def resize_template(template, columns, rows, cell_width, cell_height):
             'width': cell_width * (columns - template_columns),
             'height': cell_height * (rows - template_rows)
         }
+        BG_RECT_TAG.set('width', str(vb_width))
+        BG_RECT_TAG.set('height', str(vb_height))
 
         for attribute, delta in scalable_attributes.items():
             if attribute in element.attrib:
@@ -522,6 +526,7 @@ def resize_template(template, columns, rows, cell_width, cell_height):
     if screen is None:
         raise TemplateError('svg element with id "screen" not found')
     scale(screen, template_columns, template_rows, columns, rows)
+    
 
     return root
 
