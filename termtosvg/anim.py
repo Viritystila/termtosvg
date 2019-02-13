@@ -8,9 +8,12 @@ from typing import Iterator
 
 import v4l2
 from v4l2wrapper import create_device_wrapper
-import cv2
 from svglib.svglib import svg2rlg, SvgRenderer
 from reportlab.graphics import renderPDF, renderPM
+from PIL import Image
+import numpy as np
+from threading import Thread
+from queue import Queue
 
 import pyte.graphics
 import pyte.screens
@@ -165,18 +168,38 @@ def render_still_frames(records, directory, template, cell_width=CELL_WIDTH, cel
         with open(filename, 'wb') as output_file:
             output_file.write(etree.tostring(frame_root))
 
+def writeToV4l2(svgRenderer, v4l2_device, queue):
+    while True:
+        svg=queue.get()
+        drawing = svgRenderer.render(svg)
+        op=renderPM.drawToPIL(drawing)
+        data = np.asarray( op)
+        v4l2_device.write(data)
+    
+    
+
 def render_to_v4l2(records, directory, template, v4l2_device, cell_width=CELL_WIDTH, cell_height=CELL_HEIGHT):
     event_records, root = _render_preparation(records, template, cell_width, cell_height)
-
     frame_generator = _render_still_frames(event_records, root, cell_width, cell_height)
+    svgRenderer = SvgRenderer()
+    q = Queue()
+    svgthread= Thread(target=writeToV4l2, args=(svgRenderer,v4l2_device, q, ))
+    svgthread.daemon = True
+    svgthread.start()
     for frame_count, frame_root in enumerate(frame_generator):
         #print(etree.tostring(frame_root))
-        path=etree.tostring(frame_root)
+        #path=etree.tostring(frame_root)
         #parser = etree.XMLParser(remove_comments=True, recover=True)
         #doc = etree.parse(path, parser=parser)
         svg = frame_root
-        svgRenderer = SvgRenderer()#,**kwargs)
-        drawing = svgRenderer.render(svg)
+        q.put(svg)
+       #,**kwargs)
+        #drawing = svgRenderer.render(svg)
+        
+        #op=renderPM.drawToPIL(drawing)
+        #data = np.asarray( op)
+        #v4l2_device.write(data)
+        #print(data)
         #renderPM.drawToFile(drawing, "file.png")
         
         #filename = os.path.join(directory, 'termtosvg_{:05}.png'.format(frame_count))
@@ -464,6 +487,10 @@ def resize_template(template, columns, rows, cell_width, cell_height):
         vb_min_x, vb_min_y, vb_width, vb_height = [int(n) for n in viewbox]
         vb_width += cell_width * (columns - template_columns)
         vb_height += cell_height * (rows - template_rows)
+
+        vb_width=1920
+        vb_height=1080
+        
         element.attrib['viewBox'] = ' '.join(map(str, (vb_min_x, vb_min_y, vb_width, vb_height)))
 
         scalable_attributes = {

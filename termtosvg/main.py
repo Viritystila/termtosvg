@@ -9,6 +9,8 @@ import tempfile
 
 import termtosvg.config
 import termtosvg.anim
+from v4l2wrapper import create_device_wrapper
+
 
 logger = logging.getLogger('termtosvg')
 
@@ -242,8 +244,11 @@ def record_render_subcommand(process_args, still, template, geometry, input_file
             end_msg = 'Rendering ended, SVG frames are located at {}'
         
         elif still==False and v4l2_device!="false": 
-            termtosvg.anim.render_to_v4l2(events, output_path, template,v4l2_device)
+            w=create_device_wrapper(v4l2_device)
+            w.open_fd()
+            termtosvg.anim.render_to_v4l2(events, output_path, template, w)
             end_msg = 'Rendering to V4L2 ended'
+            w.close_fd()
             print(end_msg)
             
         else:
