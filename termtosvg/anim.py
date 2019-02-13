@@ -9,7 +9,7 @@ from typing import Iterator
 import v4l2
 from v4l2wrapper import create_device_wrapper
 import cv2
-from svglib.svglib import svg2rlg
+from svglib.svglib import svg2rlg, SvgRenderer
 from reportlab.graphics import renderPDF, renderPM
 
 import pyte.graphics
@@ -165,6 +165,24 @@ def render_still_frames(records, directory, template, cell_width=CELL_WIDTH, cel
         with open(filename, 'wb') as output_file:
             output_file.write(etree.tostring(frame_root))
 
+def render_to_v4l2(records, directory, template, v4l2_device, cell_width=CELL_WIDTH, cell_height=CELL_HEIGHT):
+    event_records, root = _render_preparation(records, template, cell_width, cell_height)
+
+    frame_generator = _render_still_frames(event_records, root, cell_width, cell_height)
+    for frame_count, frame_root in enumerate(frame_generator):
+        print(etree.tostring(frame_root))
+        path=etree.tostring(frame_root)
+        #parser = etree.XMLParser(remove_comments=True, recover=True)
+        #doc = etree.parse(path, parser=parser)
+        svg = frame_root
+        svgRenderer = SvgRenderer("")#,**kwargs)
+        drawing = svgRenderer.render(svg)
+        renderPDF.drawToFile(drawing, "file.pdf")
+        
+        #filename = os.path.join(directory, 'termtosvg_{:05}.png'.format(frame_count))
+        #renderPM.drawToFile(drawing, 'termtosvg_{:05}.png'.format(frame_count), fmt="PNG")
+        #with open(filename, 'wb') as output_file:
+        #    renderPM.drawToFile(drawing, filename, fmt="PNG")
 
 def _render_preparation(records, template, cell_width, cell_height):
     # Read header record and add the corresponding information to the SVG

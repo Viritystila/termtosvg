@@ -219,7 +219,7 @@ def render_subcommand(still, template, cast_filename, output_path, min_frame_dur
 
 
 def record_render_subcommand(process_args, still, template, geometry, input_fileno, output_fileno,
-                             output_path, min_frame_duration, max_frame_duration):
+                             output_path, min_frame_duration, max_frame_duration, v4l2_device):
     """Record and render the animation on the fly"""
     from termtosvg.term import get_terminal_size, TerminalMode, record, screen_events
 
@@ -237,9 +237,15 @@ def record_render_subcommand(process_args, still, template, geometry, input_file
         events = screen_events(asciicast_records, min_frame_duration,
                                max_frame_duration)
 
-        if still:
+        if still and v4l2_device=="false":
             termtosvg.anim.render_still_frames(events, output_path, template)
             end_msg = 'Rendering ended, SVG frames are located at {}'
+        
+        elif still==False and v4l2_device!="false": 
+            termtosvg.anim.render_to_v4l2(events, output_path, template,v4l2_device)
+            end_msg = 'Rendering to V4L2 ended'
+            print(end_msg)
+            
         else:
             termtosvg.anim.render_animation(events, output_path, template)
             end_msg = 'Rendering ended, SVG animation is {}'
@@ -262,7 +268,7 @@ def main(args=None, input_fileno=None, output_fileno=None):
     logger.handlers = [console_handler]
     logger.setLevel(logging.INFO)
     
-    default_dev="/dev/video0"
+    default_dev="false"
 
     templates = termtosvg.config.default_templates()
     default_template = 'gjm8' if 'gjm8' in templates else sorted(templates)[0]
@@ -315,7 +321,7 @@ def main(args=None, input_fileno=None, output_fileno=None):
         process_args = shlex.split(args.command)
         record_render_subcommand(process_args, args.still_frames, args.template,
                                  args.screen_geometry, input_fileno, output_fileno, output_path,
-                                 args.min_frame_duration, args.max_frame_duration)
+                                 args.min_frame_duration, args.max_frame_duration, args.v4l2_output)
 
     for handler in logger.handlers:
         handler.close()
