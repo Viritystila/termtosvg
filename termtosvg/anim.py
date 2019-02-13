@@ -14,6 +14,7 @@ from PIL import Image
 import numpy as np
 from threading import Thread
 from queue import Queue
+import time
 
 import pyte.graphics
 import pyte.screens
@@ -186,13 +187,21 @@ def render_to_v4l2(records, directory, template, v4l2_device, cell_width=CELL_WI
     svgthread= Thread(target=writeToV4l2, args=(svgRenderer,v4l2_device, q, ))
     svgthread.daemon = True
     svgthread.start()
+    start_time=time.time()
+    lim=1.0/5
+    elapsed_time = time.time() - start_time
     for frame_count, frame_root in enumerate(frame_generator):
         #print(etree.tostring(frame_root))
         #path=etree.tostring(frame_root)
         #parser = etree.XMLParser(remove_comments=True, recover=True)
         #doc = etree.parse(path, parser=parser)
         svg = frame_root
-        q.put(svg)
+        elapsed_time = time.time() - start_time
+        if elapsed_time > lim:
+            q.put(svg)
+            start_time=time.time()
+
+        #time.sleep(1.0/5)
        #,**kwargs)
         #drawing = svgRenderer.render(svg)
         
@@ -488,8 +497,8 @@ def resize_template(template, columns, rows, cell_width, cell_height):
         vb_width += cell_width * (columns - template_columns)
         vb_height += cell_height * (rows - template_rows)
 
-        vb_width=1920
-        vb_height=1080
+        vb_width= 960
+        vb_height=540
         
         element.attrib['viewBox'] = ' '.join(map(str, (vb_min_x, vb_min_y, vb_width, vb_height)))
 
